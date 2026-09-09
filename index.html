@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUNAT Reforzamiento · Simulador Integral</title>
+<style>
+  :root {
+    --sunat-blue: #005eb8;
+    --sunat-blue-2: #003b71;
+    --sunat-red: #a50034;
+    --sunat-red-2: #d21f4f;
+    --sunat-yellow: #ffd54f;
+    --bg: #eef6ff;
+    --card: #ffffff;
+    --text: #10243f;
+    --muted: #5c6f86;
+    --border: #cfe0f2;
+    --shadow: 0 16px 40px rgba(0, 59, 113, 0.12);
+
+    --c-mat: #005eb8;
+    --c-verb: #a50034;
+    --c-esp: #b7791f;
+    --c-trib: #008080;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(165, 0, 52, 0.10), transparent 28rem),
+      linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+    color: var(--text);
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    background: linear-gradient(135deg, var(--sunat-blue-2), var(--sunat-blue) 58%, #002b55);
+    color: white;
+    padding: 34px 20px 46px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .topbar::after {
+    content: "";
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    right: -160px;
+    top: -180px;
+    background: radial-gradient(circle, rgba(165, 0, 52, .34), transparent 62%);
+    pointer-events: none;
+  }
+
+  .topbar::before {
+    content: "";
+    position: absolute;
+    inset: auto -90px -170px auto;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(255, 213, 79, .18), transparent 62%);
+    pointer-events: none;
+  }
+
+  .topbar-inner { width: min(1180px, 100%); margin: auto; position: relative; z-index: 1; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,.26);
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.92);
+    padding: 8px 12px; border-radius: 999px; font-size: .85rem;
+    backdrop-filter: blur(8px); margin-bottom: 18px;
+  }
+
+  .badge-cloud {
+    background: rgba(15, 138, 85, 0.25); border: 1px solid rgba(168, 227, 193, 0.5);
+    color: #bbf7d0; font-size: .78rem; padding: 4px 10px; border-radius: 999px; font-weight: 800;
+  }
+
+  h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); margin: 0 0 10px; letter-spacing: -.01em; }
+  .topbar p { max-width: 640px; color: rgba(255,255,255,.86); margin: 0; font-size: 1.02rem; }
+
+  main { width: min(1180px, 100%); margin: -26px auto 60px; padding: 0 20px; position: relative; z-index: 2; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 8px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 4px solid var(--accent, var(--sunat-blue));
+    transition: transform .2s, box-shadow .2s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 20px 45px rgba(0, 59, 113, 0.16); }
+
+  .card .eyebrow { font-size: .78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+  .card h2 { font-size: 1.18rem; margin: 0; color: var(--text); }
+  .card p { font-size: .92rem; color: var(--muted); margin: 0; flex-grow: 1; }
+  .card .meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: .78rem; }
+  .pill { background: var(--bg); color: var(--sunat-blue-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-weight: 700; }
+
+  .card button {
+    margin-top: 6px; border: none; border-radius: 10px; padding: 11px 16px;
+    background: var(--accent, var(--sunat-blue)); color: white; font-weight: 700;
+    font-size: .92rem; cursor: pointer; transition: filter .15s ease, transform .15s ease;
+  }
+  .card button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .card button:active { transform: translateY(0); }
+  .card button:disabled { opacity: .6; cursor: wait; }
+
+  .status-line { display: flex; align-items: center; gap: 10px; margin: 26px 0 4px; color: var(--muted); font-size: .88rem; }
+  .status-line::before, .status-line::after { content: ""; height: 1px; background: var(--border); flex-grow: 1; }
+
+  #visor-wrap {
+    display: none; margin-top: 22px; border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; box-shadow: var(--shadow); background: var(--card);
+  }
+  #visor-wrap.active { display: block; }
+
+  #visor-wrap:fullscreen { border-radius: 0; margin: 0; }
+  #visor-wrap:fullscreen iframe#visor { height: calc(100vh - 52px); }
+
+  .visor-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; background: var(--sunat-blue-2); color: white; flex-wrap: wrap;
+  }
+  .visor-bar .titulo-activo { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: 8px; }
+  .visor-bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sunat-yellow); }
+  .visor-bar .acciones { display: flex; gap: 8px; }
+  .visor-bar button {
+    border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.08); color: white;
+    padding: 8px 14px; border-radius: 8px; font-size: .84rem; font-weight: 600; cursor: pointer;
+  }
+  .visor-bar button:hover { background: rgba(255,255,255,.18); }
+  .visor-bar button.destacado { background: var(--sunat-red); border-color: var(--sunat-red); }
+  .visor-bar button.destacado:hover { background: var(--sunat-red-2); }
+
+  iframe#visor { width: 100%; height: 94vh; min-height: 720px; border: none; display: block; background: white; }
+
+  .cargando {
+    display: none; align-items: center; gap: 10px; color: var(--muted);
+    font-size: .85rem; margin-top: 10px;
+  }
+  .cargando.active { display: flex; }
+  .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--sunat-blue);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .aviso {
+    display: none; margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+    background: #fff0f3; border: 1px solid #f3c1cd; color: var(--sunat-red-2); font-size: .88rem;
+  }
+  .aviso.active { display: block; }
+
+  footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 10px 20px 30px; }
+
+  @media (max-width: 640px) { iframe#visor { height: 88vh; min-height: 560px; } }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="badge">SUNAT Reforzamiento · Simulador integral</span>
+          <span class="badge-cloud" id="cloudStatusBadge">☁️ Google Sheets Conectado</span>
+        </div>
+        <div id="schHeaderBar" class="sch-header-bar"></div>
+      </div>
+      <h1>Elige tu simulador</h1>
+      <p>Simuladores sincronizados en la nube. Elige un examen oficial, ríndelo y revisa tu avance en tiempo real.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="grid" id="grid"></div>
+    <div class="cargando" id="cargando"><span class="spinner"></span><span>Sincronizando con Google Sheets…</span></div>
+    <div class="aviso" id="aviso"></div>
+    <div class="status-line" id="statusLine" style="display:none;">Simulador activo</div>
+
+    <div id="visor-wrap">
+      <div class="visor-bar">
+        <div class="titulo-activo"><span class="dot" id="visorDot"></span><span id="visorTitulo">—</span></div>
+        <div class="acciones">
+          <button id="btnPantallaCompleta" class="destacado">⛶ Pantalla completa</button>
+          <button id="btnNuevaPestana">Abrir en pestaña nueva</button>
+          <button id="btnCerrar">← Volver al panel</button>
+        </div>
+      </div>
+      <iframe id="visor" title="Simulador"></iframe>
+    </div>
+  </main>
+
+  <footer>SUNAT Reforzamiento · Escuela Virtual CAT · Conectado con Google Sheets</footer>
+
+<!-- ESTILOS ADMINISTRACIÓN Y ACCESO -->
+<style id="schEstilosDefinitivos">
+  .sch-overlay {
+    position: fixed; inset: 0; background: rgba(0, 28, 56, 0.92);
+    backdrop-filter: blur(8px); z-index: 999999; display: flex;
+    align-items: center; justify-content: center; padding: 20px;
+    font-family: 'Inter', "Segoe UI", Roboto, sans-serif;
+  }
+  .sch-box {
+    background: #ffffff; width: min(480px, 100%); padding: 34px 28px;
+    border-radius: 24px; text-align: center; box-shadow: 0 25px 65px rgba(0,0,0,0.5);
+  }
+  .sch-icon {
+    width: 64px; height: 64px; background: linear-gradient(135deg, #a50034, #d21f4f);
+    border-radius: 18px; margin: 0 auto 14px; display: grid; place-items: center;
+    font-size: 1.8rem; color: white;
+  }
+  .sch-field { text-align: left; margin-bottom: 12px; }
+  .sch-field label { display: block; font-size: 0.8rem; font-weight: 800; color: #5c6f86; margin-bottom: 5px; }
+  .sch-input {
+    width: 100%; padding: 11px 14px; border: 2px solid #cfe0f2; border-radius: 12px;
+    font-size: 0.95rem; font-weight: 700; outline: none; box-sizing: border-box;
+  }
+  .sch-input:focus { border-color: #005eb8; }
+  .sch-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px;
+    background: #005eb8; color: white; font-weight: 800; font-size: 1rem;
+    cursor: pointer; margin-top: 10px; transition: background .2s;
+  }
+  .sch-btn:hover { background: #003b71; }
+
+  .sch-header-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .sch-user-tag {
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 14px; border-radius: 999px; font-size: 0.84rem; font-weight: 800; color: white;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .sch-btn-pill {
+    border: none; padding: 6px 14px; border-radius: 999px; font-size: .8rem;
+    font-weight: 800; cursor: pointer; transition: transform .15s, opacity .15s;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .sch-btn-pill:hover { transform: scale(1.03); }
+  .pill-notes { background: #eef6ff; color: #005eb8; border: 1px solid #b9d7f4; }
+  .pill-admin { background: #ffd54f; color: #5c3b00; }
+  .pill-exit  { background: rgba(255,255,255,0.22); color: white; border: 1px solid rgba(255,255,255,0.35); }
+
+  .sch-modal {
+    position: fixed; inset: 0; background: rgba(0, 20, 40, 0.82);
+    backdrop-filter: blur(6px); z-index: 999998; display: flex;
+    align-items: center; justify-content: center; padding: 20px;
+    font-family: 'Inter', "Segoe UI", Roboto, sans-serif;
+  }
+  .sch-window {
+    background: white; width: min(1050px, 100%); max-height: 88vh; height: 88vh;
+    border-radius: 22px; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.5);
+  }
+  
+  .sch-win-top {
+    background: #003b71; color: white; padding: 16px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0 !important;
+  }
+  .sch-tabs {
+    display: flex; background: #f4f9ff; border-bottom: 1px solid #cfe0f2;
+    padding: 0 16px; overflow-x: auto;
+    flex-shrink: 0 !important;
+  }
+  .sch-tab {
+    padding: 13px 20px; font-size: 0.88rem; font-weight: 800; color: #5c6f86;
+    cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
+    user-select: none; transition: color .15s, border-color .15s;
+  }
+  .sch-tab:hover { color: #005eb8; }
+  .sch-tab.active { color: #005eb8; border-bottom-color: #005eb8; background: rgba(0,94,184,0.04); }
+  
+  .sch-win-body {
+    padding: 22px; overflow-y: auto !important; flex: 1 1 auto !important; min-height: 0 !important;
+  }
+
+  .sch-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.86rem; }
+  .sch-table th, .sch-table td { padding: 10px 12px; border: 1px solid #cfe0f2; text-align: left; }
+  .sch-table th { background: #eef6ff; color: #003b71; font-weight: 800; }
+  .sch-table tr:nth-child(even) { background: #fafcff; }
+
+  .badge-status { padding: 4px 9px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; display: inline-block; }
+  .st-activo { background: #e8f7ef; color: #0f8a55; border: 1px solid #a8e3c1; }
+  .st-porvencer { background: #fff8e1; color: #b7791f; border: 1px solid #ffe082; }
+  .st-vencido { background: #fff0f3; color: #a50034; border: 1px solid #f3c1cd; }
+  .st-bloqueado { background: #333333; color: #ffffff; border: 1px solid #111; }
+
+  .btn-wsp {
+    background: #25d366; color: white; border: none; padding: 6px 12px;
+    border-radius: 8px; font-weight: 800; font-size: 0.78rem; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  
+  .q-builder-card {
+    background: #ffffff; border: 1px solid #cfe0f2; border-left: 5px solid #005eb8;
+    border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(0,59,113,0.06);
+  }
+
+  .enroll-box {
+    background: #f4f9ff; border: 1.5px solid #b9d7f4; border-radius: 16px;
+    padding: 16px 20px; margin-bottom: 18px;
+  }
+</style>
+
+<!-- MODAL LOGIN ESTRICTO CONECTADO A GOOGLE SHEETS -->
+<div class="sch-overlay" id="schLoginModal">
+  <div class="sch-box">
+    <div class="sch-icon">🏛️</div>
+    <h2 style="margin: 0; color: #003b71; font-size: 1.45rem; font-weight: 900;">Escuela Virtual CAT</h2>
+    <p style="margin: 6px 0 16px; color: #5c6f86; font-size: 0.86rem;">Ingresa tus credenciales oficiales de alumno matriculado</p>
+
+    <div class="sch-field">
+      <label>DNI O NOMBRE DE ALUMNO:</label>
+      <input type="text" id="schInpUser" class="sch-input" placeholder="Ej. 74859612 o Juan Pérez">
+    </div>
+
+    <div class="sch-field">
+      <label>PIN DE ACCESO INDIVIDUAL:</label>
+      <input type="password" id="schInpPin" class="sch-input" placeholder="Tu PIN asignado (o PIN Director)" maxlength="12" onkeyup="if(event.key==='Enter') schPerformAuth()">
+    </div>
+
+    <button class="sch-btn" id="schBtnLogin" type="button" onclick="schPerformAuth()">Ingresar al Aula</button>
+    <div id="schAuthErr" style="display:none; color: #a50034; font-size: 0.84rem; font-weight: 800; margin-top: 12px; background:#fff0f3; padding:10px; border-radius:10px; border:1px solid #f3c1cd;"></div>
+  </div>
+</div>
+
+<!-- MODAL MIS NOTAS -->
+<div class="sch-modal" id="schStudentModal" style="display:none;">
+  <div class="sch-window" style="max-width:760px; height:auto; max-height:85vh;">
+    <div class="sch-win-top">
+      <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">📋 Mi Libreta de Evaluaciones</h3>
+      <button onclick="document.getElementById('schStudentModal').style.display='none'" style="background:none; border:none; color:white; font-size:1.3rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="sch-win-body">
+      <div id="schStudentAlertBox"></div>
+      <table class="sch-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Simulador</th>
+            <th>Aciertos</th>
+            <th>Nota / 20</th>
+          </tr>
+        </thead>
+        <tbody id="schStudentNotesTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PEGAR HTML -->
+<div class="sch-modal" id="schPasteHtmlModal" style="display:none;">
+  <div class="sch-window" style="max-width:700px; height:auto; max-height:85vh;">
+    <div class="sch-win-top">
+      <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">📋 Importar Código HTML de Balotario</h3>
+      <button onclick="document.getElementById('schPasteHtmlModal').style.display='none'" style="background:none; border:none; color:white; font-size:1.3rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="sch-win-body">
+      <p style="font-size:0.85rem; color:#5c6f86; margin-top:0;">Pega aquí el código HTML completo del balotario. Se mantendrán intactas las tildes, eñes y caracteres especiales.</p>
+      <textarea id="schPasteHtmlText" class="sch-input" style="height:230px; font-family:monospace; font-size:0.82rem;" placeholder="<!DOCTYPE html>..."></textarea>
+      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" onclick="document.getElementById('schPasteHtmlModal').style.display='none'" style="background:#eef6ff; color:#5c6f86; border:none; padding:9px 16px; border-radius:10px; font-weight:800; cursor:pointer;">Cancelar</button>
+        <button type="button" onclick="schProcessPastedHtml()" style="background:#005eb8; color:white; border:none; padding:9px 18px; border-radius:10px; font-weight:800; cursor:pointer;">📥 Importar Balotario</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PANEL ADMIN -->
+<div class="sch-modal" id="schAdminModal" style="display:none;">
+  <div class="sch-window">
+    <div class="sch-win-top">
+      <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">⚙️ Panel Central de Administración</h3>
+      <button onclick="document.getElementById('schAdminModal').style.display='none'" style="background:none; border:none; color:white; font-size:1.3rem; cursor:pointer;">✕</button>
+    </div>
+    
+    <div class="sch-tabs">
+      <div class="sch-tab active" onclick="schSwitchTab('tab-alumnos', this)">👥 Alumnos Matriculados</div>
+      <div class="sch-tab" onclick="schSwitchTab('tab-balotarios', this)">📚 Balotarios y Exámenes</div>
+      <div class="sch-tab" onclick="schSwitchTab('tab-notas', this)">📊 Historial de Notas</div>
+      <div class="sch-tab" onclick="schSwitchTab('tab-creador', this)">🛠️ Creador de Exámenes</div>
+      <div class="sch-tab" onclick="schSwitchTab('tab-config', this)">🔒 Seguridad y Respaldos</div>
+    </div>
+    
+    <div class="sch-win-body">
+      
+      <!-- TAB 1: ALUMNOS MATRICULADOS EN GOOGLE SHEETS -->
+      <div id="tab-alumnos" class="sch-tab-content">
+        <div class="enroll-box">
+          <h4 style="margin:0 0 10px; color:#003b71; font-size:1rem;">➕ Matricular Alumno en Base de Datos</h4>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
+            <div>
+              <label style="font-size:0.78rem; font-weight:800; color:#5c6f86;">Nombre Completo:</label>
+              <input type="text" id="mAddName" class="sch-input" placeholder="Ej. Carlos Mendoza">
+            </div>
+            <div>
+              <label style="font-size:0.78rem; font-weight:800; color:#5c6f86;">DNI / Usuario:</label>
+              <input type="text" id="mAddDni" class="sch-input" placeholder="Ej. 74859612">
+            </div>
+            <div>
+              <label style="font-size:0.78rem; font-weight:800; color:#5c6f86;">PIN Asignado:</label>
+              <input type="text" id="mAddPin" class="sch-input" placeholder="Ej. 4589" maxlength="10">
+            </div>
+            <div>
+              <label style="font-size:0.78rem; font-weight:800; color:#5c6f86;">WhatsApp (9 dígitos):</label>
+              <input type="tel" id="mAddPhone" class="sch-input" placeholder="987654321">
+            </div>
+            <div>
+              <label style="font-size:0.78rem; font-weight:800; color:#5c6f86;">Días de Vigencia:</label>
+              <input type="number" id="mAddDays" class="sch-input" value="30" min="1">
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <button type="button" id="btnSaveStudent" onclick="schEnrollStudentManual()" style="background:#0f8a55; color:white; border:none; padding:10px 20px; border-radius:10px; font-weight:800; cursor:pointer;">
+              💾 Guardar en Google Sheets
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <input type="text" id="schFilterCrm" placeholder="🔍 Buscar por DNI o Alumno..." class="sch-input" style="max-width:280px; padding:8px 12px; font-size:0.85rem;" onkeyup="schFilterCrmLocal()">
+          <button onclick="schLoadStudentsFromCloud()" style="background:#005eb8; color:white; border:none; padding:8px 14px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer;">🔄 Refrescar desde Google Sheets</button>
+        </div>
+
+        <table class="sch-table">
+          <thead>
+            <tr>
+              <th>Alumno</th>
+              <th>DNI / Usuario</th>
+              <th>PIN Asignado</th>
+              <th>Contacto</th>
+              <th>Días</th>
+              <th>Estado</th>
+              <th>Enviar Credencial</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="schCrmTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- TAB 2: GESTIÓN E IMPORTACIÓN DE BALOTARIOS -->
+      <div id="tab-balotarios" class="sch-tab-content" style="display:none;">
+        
+        <!-- SECCIÓN DE IMPORTACIÓN DE BALOTARIO HTML SIN ERRORES EN LETRAS -->
+        <div class="enroll-box" style="background:#f4fbf7; border-color:#a8e3c1; margin-bottom:18px;">
+          <h4 style="margin:0 0 8px; color:#0f8a55; font-size:1rem; display:flex; align-items:center; gap:8px;">
+            📥 Importar Balotario desde Archivo o Código HTML
+          </h4>
+          <p style="font-size:0.84rem; color:#5c6f86; margin:0 0 12px;">
+            Sube un archivo HTML o pega el código. El importador procesará de forma estricta la codificación UTF-8 para garantizar que tildes, eñes y caracteres especiales no contengan ningún error.
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <label style="background:#005eb8; color:white; padding:9px 16px; border-radius:10px; font-weight:800; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+              📁 Cargar Archivo .HTML
+              <input type="file" id="schImportFileInput" accept=".html,.htm" style="display:none;" onchange="schHandleFileImport(event)">
+            </label>
+            <button type="button" onclick="document.getElementById('schPasteHtmlModal').style.display='flex'" style="background:#ffffff; color:#005eb8; border:1.5px solid #005eb8; padding:8px 15px; border-radius:10px; font-weight:800; font-size:0.85rem; cursor:pointer;">
+              📋 Pegar Código HTML
+            </button>
+            <span id="schImportStatus" style="font-size:0.85rem; font-weight:800; color:#0f8a55;"></span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <p style="color:#5c6f86; font-size:0.88rem; margin:0;">Todos los balotarios disponibles (puedes probar o eliminar cualquiera libremente):</p>
+          <button onclick="schLoadExamsFromCloud()" style="background:#005eb8; color:white; border:none; padding:8px 14px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer;">🔄 Sincronizar Balotarios</button>
+        </div>
+        <table class="sch-table">
+          <thead>
+            <tr>
+              <th>Nombre del Balotario</th>
+              <th>Área</th>
+              <th>Preguntas</th>
+              <th>Tiempos (Bás / Int / Exp)</th>
+              <th>Origen</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="schBalotariosTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- TAB 3: HISTORIAL DE NOTAS -->
+      <div id="tab-notas" class="sch-tab-content" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <input type="text" id="schFilterScoresInp" placeholder="🔍 Filtrar notas..." class="sch-input" style="max-width:260px; padding:8px 12px; font-size:0.85rem;" onkeyup="schFilterScoresLocal()">
+          <button onclick="schLoadScoresFromCloud()" style="background:#005eb8; color:white; border:none; padding:8px 14px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer;">🔄 Actualizar Notas (Sheets)</button>
+        </div>
+        <table class="sch-table">
+          <thead>
+            <tr>
+              <th>Alumno</th>
+              <th>DNI</th>
+              <th>Simulador</th>
+              <th>Fecha</th>
+              <th>Aciertos</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody id="schScoresAdminTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- TAB 4: CREADOR MANUAL CON TIEMPOS EXACTOS POR NIVEL -->
+      <div id="tab-creador" class="sch-tab-content" style="display:none;">
+        <div style="background:#f4f9ff; padding:18px; border-radius:14px; border:1px solid #cfe0f2; margin-bottom:16px;">
+          <h4 style="margin:0 0 12px; color:#003b71; font-size:1.05rem;">Configuración del Nuevo Balotario Oficial</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.8rem; font-weight:800; color:#5c6f86;">Nombre del Examen / Simulador:</label>
+              <input type="text" id="newExamTitle" class="sch-input" placeholder="Ej. Tributario">
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:800; color:#5c6f86;">Área:</label>
+              <select id="newExamArea" class="sch-input">
+                <option value="Tributario">Tributario</option>
+                <option value="Matemático">Matemático</option>
+                <option value="Verbal">Verbal</option>
+                <option value="Espacial">Espacial</option>
+              </select>
+            </div>
+          </div>
+          
+          <div style="background:#ffffff; padding:12px 14px; border-radius:12px; border:1.5px dashed #b9d7f4; margin-bottom:12px;">
+            <label style="display:block; font-size:0.84rem; font-weight:900; color:#003b71; margin-bottom:8px;">⏱️ Tiempos de Examen por Nivel (en minutos):</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size:0.76rem; font-weight:800; color:#5c6f86;">Nivel BÁSICO (min):</label>
+                <input type="number" id="newExamTimeBasico" class="sch-input" value="90" min="1">
+              </div>
+              <div>
+                <label style="font-size:0.76rem; font-weight:800; color:#5c6f86;">Nivel INTERMEDIO (min):</label>
+                <input type="number" id="newExamTimeIntermedio" class="sch-input" value="60" min="1">
+              </div>
+              <div>
+                <label style="font-size:0.76rem; font-weight:800; color:#5c6f86;">Nivel EXPERTO (min):</label>
+                <input type="number" id="newExamTimeExperto" class="sch-input" value="30" min="1">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:0.8rem; font-weight:800; color:#5c6f86;">Descripción corta:</label>
+            <input type="text" id="newExamDesc" class="sch-input" placeholder="Ej. Simulador interactivo oficial de reforzamiento.">
+          </div>
+        </div>
+
+        <div id="builderQuestionsWrap"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:18px; flex-wrap:wrap;">
+          <button onclick="schAddQuestionForm()" type="button" style="background:#eef6ff; color:#005eb8; border:2px dashed #005eb8; padding:11px 18px; border-radius:12px; font-weight:800; cursor:pointer;">
+            ➕ Agregar otra Pregunta
+          </button>
+          <button id="btnPublishExam" onclick="schSaveCustomManualExam()" type="button" style="background:linear-gradient(135deg, #0f8a55, #14a266); color:white; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer; font-size:0.95rem; box-shadow:0 8px 18px rgba(15,138,85,0.25);">
+            💾 Publicar Balotario en Google Sheets
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 5: SEGURIDAD Y CONFIGURACIÓN -->
+      <div id="tab-config" class="sch-tab-content" style="display:none;">
+        <h4 style="margin:0 0 10px; color:#003b71;">Estado de Conexión en la Nube</h4>
+        <div style="background:#f4f9ff; border:1px solid #cfe0f2; border-radius:12px; padding:12px; margin-bottom:18px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#5c6f86;">URL DE TU WEB APP APPS SCRIPT:</div>
+          <div style="font-family:monospace; font-size:0.8rem; word-break:break-all; color:#005eb8; margin-top:4px;">
+            https://script.google.com/macros/s/AKfycbwdXM1toaXVtDwyr1FK4tnqX8VE1Csvdf60dKtUXcRADu9HsnWZhz66SvPczFKKVgXz/exec
+          </div>
+        </div>
+
+        <h4 style="margin:16px 0 10px; color:#003b71;">Clave Maestra de Director</h4>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div>
+            <label style="font-size:0.8rem; font-weight:800; color:#5c6f86;">PIN Director (Acceso Total):</label>
+            <input type="text" id="cfgPinAdmin" style="padding:8px; border-radius:8px; border:1px solid #cfe0f2; font-weight:800; width:150px;">
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button onclick="schSavePins()" style="background:#a50034; color:white; border:none; padding:9px 16px; border-radius:8px; font-weight:800; cursor:pointer;">Guardar Clave Director</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // URL OFICIAL DE TU GOOGLE APPS SCRIPT
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwdXM1toaXVtDwyr1FK4tnqX8VE1Csvdf60dKtUXcRADu9HsnWZhz66SvPczFKKVgXz/exec";
+
+  // FUNCIÓN UNIVERSAL DE COMUNICACIÓN CON GOOGLE SHEETS
+  async function apiPost(data) {
+    try {
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(data)
+      });
+      return await response.json();
+    } catch (err) {
+      console.error("Fallo de conexión:", err);
+      return { status: "error", mensaje: "Error de red o conexión con Google Sheets." };
+    }
+  }
+
+  // SIMULADORES PREDEFINIDOS
+  const DEFAULT_SIMULADORES = [
+    {
+      id: "mat1",
+      area: "Matemático",
+      nombre: "Razonamiento Matemático I",
+      desc: "Sucesiones, analogías, regla de tres, planteo de ecuaciones, operadores y conteo de figuras.",
+      preguntas: "20 preguntas",
+      color: "var(--c-mat)",
+      times: { basico: 90, intermedio: 60, experto: 30 }
+    },
+    {
+      id: "mat2",
+      area: "Matemático",
+      nombre: "Razonamiento Matemático II",
+      desc: "Segundo bloque de práctica matemática con nuevo balotario y nivel de dificultad ajustable.",
+      preguntas: "20 preguntas",
+      color: "var(--c-mat)",
+      times: { basico: 90, intermedio: 60, experto: 30 }
+    },
+    {
+      id: "verb1",
+      area: "Verbal",
+      nombre: "Razonamiento Verbal I",
+      desc: "Comprensión de textos, analogías verbales y series de palabras.",
+      preguntas: "20 preguntas",
+      color: "var(--c-verb)",
+      times: { basico: 90, intermedio: 60, experto: 30 }
+    },
+    {
+      id: "verb2",
+      area: "Verbal",
+      nombre: "Razonamiento Verbal II",
+      desc: "Segundo bloque de práctica verbal, con banco de preguntas ampliado.",
+      preguntas: "20 preguntas",
+      color: "var(--c-verb)",
+      times: { basico: 90, intermedio: 60, experto: 30 }
+    },
+    {
+      id: "esp",
+      area: "Espacial",
+      nombre: "Razonamiento Espacial",
+      desc: "Figuras, giros, rotación mental, plegado y visualización espacial con apoyo gráfico.",
+      preguntas: "30 preguntas",
+      color: "var(--c-esp)",
+      times: { basico: 54, intermedio: 36, experto: 20 }
+    }
+  ];
+
+  const DEFAULT_EXAMS_QUESTIONS = {
+    "mat1": [
+      {
+        section: "Planteo de ecuaciones y razonamiento lógico",
+        text: "Si al doble de un número le resto el propio número, se obtiene 18. Hallar el número.",
+        options: { A: "18", B: "36", C: "24", D: "12", E: "20" },
+        correct: "A",
+        sustento: "Sea x el número. Planteamiento: 2x - x = 18, por lo tanto x = 18."
+      },
+      {
+        section: "Planteo de ecuaciones y razonamiento lógico",
+        text: "Un alambre de 36 m se ha dividido en dos partes, de manera que una de ellas es el doble de la otra. Calcular la longitud de la parte menor.",
+        options: { A: "6 m", B: "9 m", C: "12 m", D: "18 m", E: "24 m" },
+        correct: "C",
+        sustento: "Sea x la parte menor, la mayor es 2x. Entonces x + 2x = 36 => 3x = 36 => x = 12 m."
+      },
+      {
+        section: "Planteo de ecuaciones y razonamiento lógico",
+        text: "Pedro tiene el doble que Luis, y Mateo el doble que Pedro y Luis juntos. Si entre los tres tienen 16200 soles, hallar cuánto tiene Luis.",
+        options: { A: "S/. 2 000", B: "S/. 1 600", C: "S/. 1 700", D: "S/. 1 900", E: "S/. 1 800" },
+        correct: "E",
+        sustento: "Sea L lo de Luis. Pedro = 2L; Mateo = 2(L + 2L) = 6L. Total: L + 2L + 6L = 9L = 16200 => L = 1800 soles."
+      }
+    ],
+    "esp": [
+      {
+        section: "Rotación mental",
+        text: "¿En cuál de las siguientes opciones se muestra una rotación de 90 grados a la derecha de una figura?",
+        options: {
+          A: "Opción A (Rotación a 90° horario)",
+          B: "Opción B (Rotación a 180°)",
+          C: "Opción C (Reflejo vertical)",
+          D: "Opción D (Giro antihorario 90°)",
+          E: "Opción E (Inversión diagonal)"
+        },
+        correct: "A",
+        sustento: "Al rotar la figura 90 grados a la derecha (sentido horario), su eje vertical pasa a horizontal de forma congruente."
+      }
+    ]
+  };
+
+  // REPARADOR DE CARACTERES Y MENSURA DE CODIFICACIÓN UTF-8 (SIN ERRORES EN LAS LETRAS)
+  function schFixTextEncoding(str) {
+    if (!str) return '';
+    if (/[\xC2-\xF4][\x80-\xBF]/.test(str) || str.includes('Ã') || str.includes('Â')) {
+      try {
+        return decodeURIComponent(escape(str));
+      } catch (e) {
+        return str
+          .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ãº/g, 'ú')
+          .replace(/Ã/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í').replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú')
+          .replace(/Ã±/g, 'ñ').replace(/Ã‘/g, 'Ñ').replace(/Â¿/g, '¿').replace(/Â¡/g, '¡')
+          .replace(/â€“/g, '–').replace(/â€”/g, '—').replace(/â€œ/g, '“').replace(/â€/g, '”');
+      }
+    }
+    return str;
+  }
+
+  // GENERADOR MAESTRO DEL SIMULADOR COMPLETO
+  function schBuildFullSimulatorHTML(examObj) {
+    const questions = examObj.questions && examObj.questions.length ? examObj.questions : [
+      {
+        section: examObj.area || "General",
+        text: "Pregunta oficial del balotario.",
+        options: { A: "Opción A", B: "Opción B", C: "Opción C", D: "Opción D", E: "Opción E" },
+        correct: "A",
+        sustento: "Fundamento y sustento técnico de la respuesta correcta."
+      }
+    ];
+
+    const examJsonSafe = JSON.stringify(questions).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+    const examTitle = schFixTextEncoding(examObj.nombre || "Simulador");
+    const examArea = schFixTextEncoding(examObj.area || "General");
+    const examDesc = schFixTextEncoding(examObj.desc || "Resuelve cada reto visual y revisa tu resultado al finalizar.");
+    const totalQ = questions.length;
+
+    const tBasico = examObj.times?.basico || 90;
+    const tIntermedio = examObj.times?.intermedio || 60;
+    const tExperto = examObj.times?.experto || 30;
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador | ${examTitle}</title>
+<style>
+  :root {
+    --sunat-blue: #005eb8;
+    --sunat-blue-2: #003b71;
+    --sunat-red: #a50034;
+    --sunat-red-2: #d21f4f;
+    --sunat-yellow: #ffd54f;
+    --bg: #eef6ff;
+    --card: #ffffff;
+    --text: #10243f;
+    --muted: #5c6f86;
+    --border: #cfe0f2;
+    --ok: #0f8a55;
+    --bad: #b4233d;
+    --soft-ok: #e8f7ef;
+    --soft-bad: #fff0f3;
+    --soft-blue: #f4f9ff;
+    --shadow: 0 16px 40px rgba(0, 59, 113, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background: radial-gradient(circle at top left, rgba(165,0,52,.12), transparent 28rem),
+                linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+    color: var(--text); line-height: 1.55;
+  }
+  .topbar {
+    background: linear-gradient(135deg, var(--sunat-blue-2), var(--sunat-blue) 58%, #002b55);
+    color: white; padding: 26px 20px 38px; position: relative; overflow: hidden;
+  }
+  .topbar-inner { width: min(1220px, 100%); margin: auto; position: relative; z-index: 1; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 900; text-transform: uppercase; }
+  .brand-textmark { display: flex; flex-direction: column; line-height: 1; }
+  .brand-textmark-main { font-size: 1.5rem; font-weight: 900; color: #fff; letter-spacing: 1px; }
+  .brand-textmark-sub { font-size: .62rem; font-weight: 800; letter-spacing: 2px; color: var(--sunat-yellow); margin-top: 3px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,.26);
+    background: rgba(255,255,255,.12); color: rgba(255,255,255,.92); padding: 6px 12px;
+    border-radius: 999px; font-size: .84rem; backdrop-filter: blur(8px);
+  }
+  h1 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); margin: 0; line-height: 1.1; color: #fff; }
+  .session-name { margin: 8px 0 0; color: #ffe3ec; font-size: clamp(1.2rem, 2.4vw, 1.8rem); font-weight: 850; }
+  .subtitle { margin: 12px 0 0; max-width: 860px; color: rgba(255,255,255,.86); font-size: .95rem; }
+  .hero-note {
+    display: inline-flex; align-items: center; margin-top: 14px; padding: 8px 14px; border-radius: 999px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); color: rgba(255,255,255,.92); font-size: .86rem;
+  }
+  .layout {
+    width: min(1220px, calc(100% - 32px)); margin: -22px auto 60px; display: grid;
+    grid-template-columns: minmax(0, 1fr) 290px; grid-template-areas: "exam sidebar"; gap: 20px; align-items: start;
+  }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow); }
+  .exam { grid-area: exam; padding: 20px; min-width: 0; width: 100%; }
+  .sidebar { grid-area: sidebar; padding: 16px; position: sticky; top: 16px; }
+
+  .exam-dashboard {
+    display: grid; grid-template-columns: minmax(200px, 1.1fr) minmax(180px, .95fr) minmax(180px, .95fr);
+    gap: 12px; margin-bottom: 16px;
+  }
+  .stat { padding: 14px 16px; border-radius: 18px; background: #f4f9ff; border: 1px solid var(--border); min-height: 96px; display: flex; flex-direction: column; justify-content: center; }
+  .dashboard-timer { background: linear-gradient(135deg, #f3f9ff 0%, #fff1f6 100%); }
+  .timer-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+  .stat-label { color: var(--muted); font-size: .82rem; font-weight: 800; margin-bottom: 3px; }
+  .timer-value { font-size: 2.1rem; font-weight: 900; color: var(--sunat-red); font-variant-numeric: tabular-nums; line-height: 1; }
+  .timer-pause-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,213,79,.8);
+    background: linear-gradient(135deg, #fff8e1, #fffdf4); color: #8a4b00; cursor: pointer;
+    display: grid; place-items: center; font-weight: 900; font-size: 1.1rem; transition: transform .15s;
+  }
+  .timer-pause-btn:hover { transform: scale(1.06); }
+  .answered-summary { font-size: 1.6rem; font-weight: 900; color: var(--sunat-blue); display: flex; align-items: baseline; gap: 6px; }
+  .summary-separator { color: #7d94ad; font-size: 1.1rem; }
+  .progress-wrap { background: #fff; padding: 14px 16px; border: 1px solid var(--border); border-radius: 18px; display: flex; flex-direction: column; justify-content: center; min-height: 96px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: .84rem; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
+  .progress { width: 100%; height: 11px; background: #d8eafa; border-radius: 99px; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--sunat-red), var(--sunat-blue)); transition: width .25s ease; }
+
+  .question-nav {
+    display: grid; grid-template-columns: 140px minmax(0, 1fr) 140px; gap: 10px; align-items: center;
+    padding: 10px 14px; border-radius: 18px; background: rgba(255,255,255,.94); border: 1px solid var(--border);
+    margin-bottom: 16px; position: sticky; top: 12px; z-index: 8; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 22px rgba(0,59,113,.06);
+  }
+  .question-nav-center { text-align: center; color: var(--sunat-blue-2); }
+  .question-nav-center strong { display: block; font-size: 1.05rem; font-weight: 900; }
+  .question-nav-center span { display: block; font-size: .82rem; color: var(--muted); font-weight: 700; margin-top: 2px; }
+
+  button, .btn {
+    border: none; border-radius: 14px; padding: 11px 16px; cursor: pointer;
+    font-weight: 800; font-size: .92rem; transition: transform .15s, filter .15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, var(--sunat-red), var(--sunat-red-2)); color: white; box-shadow: 0 8px 20px rgba(165,0,52,.2); }
+  .btn-light { background: #ffffff; color: var(--sunat-blue); border: 1px solid var(--border); }
+  .btn-start { width: 100%; min-height: 46px; background: linear-gradient(135deg, var(--sunat-red), var(--sunat-red-2)); color: white; margin-bottom: 8px; font-size: .95rem; }
+  .btn-shuffle { width: 100%; min-height: 42px; background: #f4f9ff; color: var(--sunat-blue-2); border: 1px solid #b9d7f4; margin-bottom: 8px; font-size: .88rem; }
+  .submit-desktop { width: 100%; min-height: 46px; background: linear-gradient(135deg, var(--sunat-red), var(--sunat-red-2)); color: white; font-size: .95rem; margin-bottom: 8px; box-shadow: 0 8px 20px rgba(165,0,52,.2); }
+  .btn-reset { width: 100%; min-height: 40px; background: #ffffff; color: var(--muted); border: 1px solid var(--border); font-size: .86rem; }
+
+  .level-box { padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #fff 0%, #f7fbff 100%); border: 1px solid var(--border); margin-bottom: 12px; }
+  .level-title { font-weight: 850; color: var(--sunat-blue-2); margin-bottom: 8px; font-size: .92rem; text-align: center; }
+  .level-options { display: grid; gap: 6px; }
+  .level-option {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 12px; background: #fbdfdf22; cursor: pointer; font-size: .84rem;
+  }
+  .level-option input { accent-color: var(--sunat-red); }
+  .level-option strong { color: var(--sunat-blue); display: block; font-size: .84rem; }
+  .level-option span { color: var(--muted); font-size: .76rem; }
+
+  .sound-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 9px 12px; border-radius: 14px; background: #ffffff; border: 1px solid var(--border);
+    color: var(--sunat-blue-2); font-weight: 800; font-size: .86rem; margin-bottom: 10px;
+  }
+  .switch {
+    width: 48px; height: 26px; border-radius: 999px; background: var(--sunat-blue);
+    position: relative; border: none; padding: 0; cursor: pointer;
+  }
+  .switch::after {
+    content: ""; position: absolute; width: 20px; height: 20px; top: 3px; left: 24px;
+    background: white; border-radius: 50%; transition: left .18s;
+  }
+  .switch.off { background: #9ca3af; }
+  .switch.off::after { left: 4px; }
+  .notice { padding: 11px 13px; border-radius: 14px; background: linear-gradient(135deg, #eef7ff, #f8fbff); border: 1px solid #b9d7f4; color: var(--sunat-blue-2); font-size: .82rem; font-weight: 700; margin-top: 10px; }
+
+  .question-slide { display: none; }
+  .question-slide.active { display: block; animation: fadeUp .3s ease both; }
+  .section-title {
+    margin: 0 0 12px; padding: 10px 14px; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(0,94,184,.08), rgba(165,0,52,.06));
+    border: 1px solid var(--border); color: var(--sunat-blue); font-weight: 850; font-size: .92rem;
+  }
+  .question-card {
+    border: 1px solid var(--border); border-left: 5px solid var(--sunat-blue);
+    border-radius: 20px; padding: 22px; background: #fff; box-shadow: 0 6px 20px rgba(0,59,113,.06);
+  }
+  .q-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+  .q-number {
+    min-width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: var(--sunat-blue); color: white; font-weight: 900; font-size: 1.1rem; flex-shrink: 0;
+  }
+  .q-text { font-weight: 800; font-size: 1.02rem; color: #10243f; flex: 1; }
+  .q-status { font-size: .8rem; font-weight: 800; padding: 5px 12px; border-radius: 99px; display: none; }
+  .q-status.good { display: inline-flex; background: var(--soft-ok); color: var(--ok); border: 1px solid #a8e3c1; }
+  .q-status.wrong { display: inline-flex; background: var(--soft-bad); color: var(--bad); border: 1px solid #f3c1cd; }
+
+  .question-image-wrap { margin: 14px 0; text-align: center; background: #f8fbff; border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+  .question-image { max-width: 100%; max-height: 480px; height: auto; border-radius: 10px; display: inline-block; object-fit: contain; }
+
+  .options { display: grid; gap: 9px; margin-top: 14px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 14px; cursor: pointer;
+    background: #fdfefe; transition: all .16s; font-size: .93rem; font-weight: 650;
+  }
+  .option:hover { border-color: rgba(165,0,52,.5); background: #fff5f8; transform: translateY(-1px); }
+  .option.selected { border-color: var(--sunat-red); background: #fff5f8; font-weight: 800; box-shadow: 0 4px 12px rgba(165,0,52,.1); }
+  .option.correct-answer { border-color: var(--ok) !important; background: var(--soft-ok) !important; font-weight: 800; }
+  .option.wrong-answer { border-color: var(--bad) !important; background: var(--soft-bad) !important; }
+  .option-letter { font-weight: 900; color: var(--sunat-blue); min-width: 24px; }
+  .option input { margin-top: 4px; accent-color: var(--sunat-red); }
+
+  .review { display: none; margin-top: 18px; border-radius: 16px; padding: 16px; background: #f4f9ff; border: 1px dashed #b9d7f4; }
+  .review.show { display: block; animation: fadeUp .3s ease both; }
+  .review-title { font-weight: 900; color: var(--sunat-blue); margin-bottom: 6px; font-size: .95rem; }
+  .review p { margin: 4px 0; font-size: .9rem; color: #26445f; }
+
+  .results {
+    display: none; margin-bottom: 18px; border-radius: 22px; padding: 22px;
+    background: linear-gradient(135deg, var(--sunat-blue-2), var(--sunat-blue)); color: white;
+  }
+  .results.show { display: block; animation: fadeUp .3s ease both; }
+  .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  .result-box { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 14px; padding: 12px; text-align: center; }
+  .result-box span { display: block; font-size: .8rem; color: rgba(255,255,255,.8); font-weight: 700; }
+  .result-box strong { font-size: 1.45rem; font-weight: 900; margin-top: 2px; display: block; }
+
+  .sim-overlay {
+    position: fixed; inset: 0; background: rgba(0, 28, 56, 0.85); backdrop-filter: blur(6px);
+    z-index: 99999; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .sim-overlay.show { display: flex; animation: fadeUp .25s ease both; }
+  .sim-modal-box {
+    background: white; border-radius: 24px; width: min(480px, 100%); padding: 30px; text-align: center;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.4); border: 1px solid var(--border);
+  }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; grid-template-areas: "exam" "sidebar"; }
+    .exam-dashboard { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="brand-textmark">
+            <span class="brand-textmark-main">SUNAT</span>
+            <span class="brand-textmark-sub">REFORZAMIENTO</span>
+          </div>
+        </div>
+        <div class="badge">CAT SUNAT 2026 · Simulador interactivo</div>
+      </div>
+      <h1>Simulador de Examen</h1>
+      <div class="session-name">${examTitle}</div>
+      <p class="subtitle">${examDesc}</p>
+      <div class="hero-note">Área: ${examArea} · Total: ${totalQ} preguntas oficiales</div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel exam">
+      
+      <div class="results" id="results">
+        <h2 style="margin:0; font-size:1.3rem;">Resultado de la Evaluación</h2>
+        <p style="margin:4px 0 0; color:rgba(255,255,255,.85); font-size:.88rem;">Revisa tu nota obtenida, aciertos y el sustento de cada alternativa.</p>
+        <div class="results-grid">
+          <div class="result-box"><span>Nota</span><strong id="score20">0/20</strong></div>
+          <div class="result-box"><span>Correctas</span><strong id="correctCount">0</strong></div>
+          <div class="result-box"><span>Incorrectas</span><strong id="incorrectCount">0</strong></div>
+          <div class="result-box"><span>Porcentaje</span><strong id="percentage">0%</strong></div>
+        </div>
+      </div>
+
+      <div class="exam-dashboard">
+        <div class="stat dashboard-timer">
+          <div class="timer-card-top">
+            <div>
+              <div class="stat-label">Tiempo restante</div>
+              <div class="timer-value" id="timerDisplay">60:00</div>
+            </div>
+            <button class="timer-pause-btn" id="pauseBtn" type="button" title="Pausar / Reanudar">⏸</button>
+          </div>
+        </div>
+
+        <div class="stat">
+          <div class="stat-label">Preguntas respondidas</div>
+          <div class="answered-summary">
+            <span id="answeredCount">0</span>
+            <span class="summary-separator">/</span>
+            <span id="totalQuestions">${totalQ}</span>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>Avance</span>
+            <span id="progressText">0%</span>
+          </div>
+          <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="question-nav" id="questionNav">
+        <button class="btn-light" id="prevQuestionBtn" type="button">← Anterior</button>
+        <div class="question-nav-center">
+          <strong id="currentQuestionText">Pregunta 1 de ${totalQ}</strong>
+          <span id="currentSectionText">—</span>
+        </div>
+        <button class="btn-primary" id="nextQuestionBtn" type="button">Siguiente →</button>
+      </div>
+
+      <div id="questionsContainer"></div>
+
+    </section>
+
+    <aside class="panel sidebar">
+      <div class="level-box">
+        <div class="level-title">Elige tu nivel</div>
+        <div class="level-options">
+          <label class="level-option">
+            <input type="radio" name="level" value="basico" onchange="changeLevel('basico')">
+            <div><strong>Básico (${tBasico} min)</strong><span>Más tiempo para analizar</span></div>
+          </label>
+          <label class="level-option">
+            <input type="radio" name="level" value="intermedio" checked onchange="changeLevel('intermedio')">
+            <div><strong>Intermedio (${tIntermedio} min)</strong><span>Reto equilibrado</span></div>
+          </label>
+          <label class="level-option">
+            <input type="radio" name="level" value="experto" onchange="changeLevel('experto')">
+            <div><strong>Experto (${tExperto} min)</strong><span>Reto intensivo</span></div>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-start" id="btnStart" type="button" onclick="startExam()">▶ Comenzar evaluación</button>
+      <button class="btn-shuffle" id="btnShuffle" type="button" onclick="shuffleQuestions()">🔀 Mezclar preguntas</button>
+
+      <div class="sound-row">
+        <span>Sonido activado</span>
+        <button class="switch" id="soundSwitch" type="button" onclick="toggleSound()"></button>
+      </div>
+
+      <button class="submit-desktop" id="btnSubmit" type="button" onclick="submitExam()">Enviar examen</button>
+      <button class="btn-reset" id="btnReset" type="button" onclick="resetExam()">Reiniciar intento</button>
+
+      <div class="notice" id="levelNotice">Nivel: INTERMEDIO (${tIntermedio} min).</div>
+    </aside>
+  </main>
+
+  <div class="sim-overlay" id="pauseOverlay">
+    <div class="sim-modal-box">
+      <div style="font-size:3rem; margin-bottom:8px;">⏸️</div>
+      <h2 style="margin:0 0 6px; color:#003b71;">Evaluación en Pausa</h2>
+      <p style="color:#5c6f86; font-size:.9rem; margin:0 0 16px;">Tómate un respiro. Tu progreso y tiempo están seguros.</p>
+      <button class="btn-primary" style="width:100%; padding:13px;" onclick="resumeExam()">▶ Reanudar evaluación</button>
+    </div>
+  </div>
+
+  <div class="sim-overlay" id="resultOverlay">
+    <div class="sim-modal-box">
+      <div id="resultIcon" style="font-size:3.5rem; margin-bottom:8px;">🏆</div>
+      <h2 id="resultTitle" style="margin:0 0 8px; color:#003b71;">¡Examen Finalizado!</h2>
+      <p id="resultMsg" style="color:#5c6f86; font-size:.92rem; margin:0 0 16px;">Has completado la evaluación satisfactoriamente.</p>
+      <div style="background:#f4f9ff; border:1px solid #cfe0f2; border-radius:14px; padding:14px; margin-bottom:16px;">
+        <span style="font-size:.85rem; color:#5c6f86; font-weight:700;">Tu Nota Final:</span>
+        <div id="resultModalScore" style="font-size:2.2rem; font-weight:900; color:#005eb8;">0 / 20</div>
+      </div>
+      <button class="btn-primary" style="width:100%; padding:13px;" onclick="document.getElementById('resultOverlay').classList.remove('show'); window.scrollTo({top:0, behavior:'smooth'});">
+        🔍 Revisar preguntas y sustento
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const RAW_QUESTIONS = ${examJsonSafe};
+    const EXAM_TIMES = {
+      basico: ${tBasico},
+      intermedio: ${tIntermedio},
+      experto: ${tExperto}
+    };
+
+    let questions = JSON.parse(JSON.stringify(RAW_QUESTIONS));
+    let currentIndex = 0;
+    let userAnswers = {};
+    let isStarted = false;
+    let isSubmitted = false;
+    let isPaused = false;
+    let timerInterval = null;
+    let soundEnabled = true;
+    let currentLevel = "intermedio";
+    let totalSeconds = 0;
+    let remainingSeconds = 0;
+
+    function playBeep(freq = 520, type = 'sine', duration = 0.12) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + duration);
+      } catch(e) {}
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const sw = document.getElementById('soundSwitch');
+      if (soundEnabled) sw.classList.remove('off');
+      else sw.classList.add('off');
+    }
+
+    function initQuestionsDOM() {
+      const container = document.getElementById('questionsContainer');
+      container.innerHTML = "";
+      questions.forEach((q, idx) => {
+        const slide = document.createElement('div');
+        slide.className = "question-slide" + (idx === 0 ? " active" : "");
+        slide.id = "slide-" + idx;
+
+        let imgHTML = "";
+        if (q.image && q.image.trim() !== "") {
+          imgHTML = '<div class="question-image-wrap"><img src="' + q.image + '" class="question-image" alt="Material de apoyo"></div>';
+        }
+
+        let optionsHTML = "";
+        const letters = ['A', 'B', 'C', 'D', 'E'];
+        letters.forEach(let => {
+          if (q.options && q.options[let] !== undefined && q.options[let] !== null && String(q.options[let]).trim() !== "") {
+            optionsHTML += '<label class="option" data-idx="' + idx + '" data-letter="' + let + '" onclick="selectAnswer(' + idx + ', \\'' + let + '\\')">' +
+              '<input type="radio" name="q_' + idx + '" value="' + let + '">' +
+              '<span class="option-letter">' + let + ')</span>' +
+              '<span>' + q.options[let] + '</span>' +
+            '</label>';
+          }
+        });
+
+        slide.innerHTML = 
+          '<div class="section-title">' + (q.section || "${examArea}") + '</div>' +
+          '<article class="question-card" id="card-' + idx + '">' +
+            '<div class="q-head">' +
+              '<div class="q-number">' + (idx + 1) + '</div>' +
+              '<div class="q-text">' + q.text + '</div>' +
+              '<div class="q-status" id="status-' + idx + '"></div>' +
+            '</div>' +
+            imgHTML +
+            '<div class="options">' + optionsHTML + '</div>' +
+            '<div class="review" id="review-' + idx + '">' +
+              '<div class="review-title">Sustento</div>' +
+              '<p><strong>Tu respuesta:</strong> <span id="chosen-' + idx + '">Sin responder</span></p>' +
+              '<p><strong>Respuesta correcta:</strong> ' + q.correct + ') ' + (q.options[q.correct] || '') + '</p>' +
+              '<p>' + (q.sustento || "Sustento oficial no disponible.") + '</p>' +
+            '</div>' +
+          '</article>';
+
+        container.appendChild(slide);
+      });
+
+      updateNavUI();
+      updateDashboardCounts();
+    }
+
+    function updateNavUI() {
+      const total = questions.length;
+      document.getElementById('currentQuestionText').textContent = 'Pregunta ' + (currentIndex + 1) + ' de ' + total;
+      document.getElementById('currentSectionText').textContent = questions[currentIndex]?.section || "${examArea}";
+      document.getElementById('prevQuestionBtn').disabled = (currentIndex === 0);
+      document.getElementById('nextQuestionBtn').textContent = (currentIndex === total - 1 ? 'Revisar fin →' : 'Siguiente →');
+    }
+
+    function showQuestion(index) {
+      if (index < 0 || index >= questions.length) return;
+      document.querySelectorAll('.question-slide').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById('slide-' + index);
+      if (target) target.classList.add('active');
+      currentIndex = index;
+      updateNavUI();
+    }
+
+    document.getElementById('prevQuestionBtn').onclick = () => {
+      if (currentIndex > 0) { showQuestion(currentIndex - 1); playBeep(440); }
+    };
+    document.getElementById('nextQuestionBtn').onclick = () => {
+      if (currentIndex < questions.length - 1) { showQuestion(currentIndex + 1); playBeep(520); }
+      else if (!isSubmitted) { submitExam(); }
+    };
+
+    function selectAnswer(qIdx, letter) {
+      if (isSubmitted) return;
+      if (!isStarted) startExam();
+      userAnswers[qIdx] = letter;
+      playBeep(650);
+
+      const slide = document.getElementById('slide-' + qIdx);
+      if (slide) {
+        slide.querySelectorAll('.option').forEach(opt => {
+          const radio = opt.querySelector('input');
+          if (opt.getAttribute('data-letter') === letter) {
+            opt.classList.add('selected');
+            if (radio) radio.checked = true;
+          } else {
+            opt.classList.remove('selected');
+            if (radio) radio.checked = false;
+          }
+        });
+      }
+      updateDashboardCounts();
+    }
+
+    function updateDashboardCounts() {
+      const total = questions.length;
+      const count = Object.keys(userAnswers).length;
+      document.getElementById('answeredCount').textContent = count;
+      document.getElementById('totalQuestions').textContent = total;
+      const pct = Math.round((count / total) * 100);
+      document.getElementById('progressText').textContent = pct + '%';
+      document.getElementById('progressBar').style.width = pct + '%';
+    }
+
+    function changeLevel(lvl) {
+      if (isStarted && !isSubmitted) {
+        if (!confirm("Cambiar de nivel reiniciará el temporizador. ¿Deseas continuar?")) return;
+      }
+      currentLevel = lvl;
+      const totalMins = EXAM_TIMES[lvl] || 60;
+      totalSeconds = totalMins * 60;
+      remainingSeconds = totalSeconds;
+      formatTimer();
+      document.getElementById('levelNotice').textContent = 'Nivel: ' + lvl.toUpperCase() + ' · Tiempo: ' + totalMins + ' min.';
+    }
+
+    function formatTimer() {
+      const m = Math.floor(remainingSeconds / 60);
+      const s = remainingSeconds % 60;
+      const str = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+      document.getElementById('timerDisplay').textContent = str;
+    }
+
+    function startExam() {
+      if (isStarted) return;
+      isStarted = true;
+      document.getElementById('btnStart').textContent = "Evaluación en curso";
+      document.getElementById('btnStart').style.background = "#005eb8";
+      timerInterval = setInterval(() => {
+        if (!isPaused && remainingSeconds > 0) {
+          remainingSeconds--;
+          formatTimer();
+          if (remainingSeconds === 0) {
+            clearInterval(timerInterval);
+            alert("¡El tiempo ha concluido! Tu examen se enviará automáticamente.");
+            submitExam();
+          }
+        }
+      }, 1000);
+    }
+
+    document.getElementById('pauseBtn').onclick = () => {
+      if (!isStarted || isSubmitted) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        document.getElementById('pauseOverlay').classList.add('show');
+        document.getElementById('pauseBtn').textContent = '▶';
+      } else {
+        resumeExam();
+      }
+    };
+
+    function resumeExam() {
+      isPaused = false;
+      document.getElementById('pauseOverlay').classList.remove('show');
+      document.getElementById('pauseBtn').textContent = '⏸';
+    }
+
+    function shuffleQuestions() {
+      if (isStarted && !confirm("Mezclar preguntas reiniciará tus respuestas marcadas. ¿Continuar?")) return;
+      for (let i = questions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questions[i], questions[j]] = [questions[j], questions[i]];
+      }
+      userAnswers = {};
+      initQuestionsDOM();
+      showQuestion(0);
+      playBeep(480);
+    }
+
+    function submitExam() {
+      if (isSubmitted) return;
+      const total = questions.length;
+      const answered = Object.keys(userAnswers).length;
+      if (answered < total) {
+        if (!confirm("Has respondido " + answered + " de " + total + " preguntas. ¿Deseas enviar el examen ahora?")) {
+          return;
+        }
+      }
+
+      clearInterval(timerInterval);
+      isSubmitted = true;
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('btnSubmit').disabled = true;
+
+      let correct = 0;
+      questions.forEach((q, idx) => {
+        const userChoice = userAnswers[idx];
+        const isRight = (userChoice === q.correct);
+        if (isRight) correct++;
+
+        const slide = document.getElementById('slide-' + idx);
+        const st = document.getElementById('status-' + idx);
+        const ch = document.getElementById('chosen-' + idx);
+        const rev = document.getElementById('review-' + idx);
+
+        if (ch) ch.textContent = userChoice ? (userChoice + ') ' + (q.options[userChoice] || '')) : "Sin responder";
+        if (rev) rev.classList.add('show');
+
+        if (st) {
+          if (isRight) {
+            st.className = "q-status good"; st.textContent = "✓ Correcto";
+          } else {
+            st.className = "q-status wrong"; st.textContent = "✗ Incorrecto";
+          }
+        }
+
+        if (slide) {
+          slide.querySelectorAll('.option').forEach(opt => {
+            const l = opt.getAttribute('data-letter');
+            if (l === q.correct) opt.classList.add('correct-answer');
+            else if (l === userChoice) opt.classList.add('wrong-answer');
+          });
+        }
+      });
+
+      const incorrect = total - correct;
+      const score20 = Math.round((correct / total) * 20);
+      const pct = Math.round((correct / total) * 100);
+
+      document.getElementById('score20').textContent = score20 + ' / 20';
+      document.getElementById('correctCount').textContent = correct;
+      document.getElementById('incorrectCount').textContent = incorrect;
+      document.getElementById('percentage').textContent = pct + '%';
+      document.getElementById('results').classList.add('show');
+
+      const nowStr = new Date().toLocaleDateString('es-PE') + ' ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'EXAM_SCORE',
+          examId: "${examObj.id || 'custom'}",
+          examTitle: "${examTitle}",
+          score20: score20,
+          correct: correct,
+          total: total,
+          date: nowStr
+        }, '*');
+      }
+
+      const resOverlay = document.getElementById('resultOverlay');
+      document.getElementById('resultModalScore').textContent = score20 + ' / 20';
+      if (score20 >= 14) {
+        document.getElementById('resultIcon').textContent = '🏆';
+        document.getElementById('resultTitle').textContent = '¡Excelente Calificación!';
+        document.getElementById('resultMsg').textContent = 'Has demostrado dominio en este balotario oficial SUNAT.';
+        playBeep(880, 'triangle', 0.4);
+      } else {
+        document.getElementById('resultIcon').textContent = '💡';
+        document.getElementById('resultTitle').textContent = '¡Sigue Practicando!';
+        document.getElementById('resultMsg').textContent = 'Repasa las alternativas con sustento para afianzar tus conocimientos.';
+        playBeep(320, 'sine', 0.4);
+      }
+      resOverlay.classList.add('show');
+    }
+
+    function resetExam() {
+      if (!confirm("¿Deseas reiniciar el intento actual?")) return;
+      clearInterval(timerInterval);
+      isStarted = false;
+      isSubmitted = false;
+      isPaused = false;
+      userAnswers = {};
+      document.getElementById('results').classList.remove('show');
+      document.getElementById('btnStart').textContent = "▶ Comenzar evaluación";
+      document.getElementById('btnStart').style.background = "";
+      document.getElementById('btnSubmit').disabled = false;
+      document.getElementById('pauseBtn').disabled = false;
+      changeLevel(currentLevel);
+      initQuestionsDOM();
+      showQuestion(0);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      changeLevel('intermedio');
+      initQuestionsDOM();
+      showQuestion(0);
+    });
+  <\/script>
+</body>
+</html>`;
+  }
+
+  // VARIABLES GLOBALES
+  let SIMULADORES = [];
+  let DATA = {};
+  let currentUser = null;
+  let cachedStudents = [];
+  let cachedScores = [];
+
+  // GESTIÓN DE BALOTARIOS ELIMINADOS
+  function schGetDeletedDefaults() {
+    return JSON.parse(localStorage.getItem('sch_deleted_defaults') || '[]');
+  }
+  function schAddDeletedDefault(id) {
+    const list = schGetDeletedDefaults();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('sch_deleted_defaults', JSON.stringify(list));
+    }
+  }
+
+  function schInitStorage() {
+    const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
+    const deletedDefaults = schGetDeletedDefaults();
+    const activeDefaults = DEFAULT_SIMULADORES.filter(d => !deletedDefaults.includes(d.id));
+
+    SIMULADORES = [...activeDefaults, ...customList];
+
+    SIMULADORES.forEach(sim => {
+      const storedHtml = localStorage.getItem('sch_custom_data_' + sim.id);
+      if (storedHtml) {
+        DATA[sim.id] = storedHtml;
+      } else if (DEFAULT_EXAMS_QUESTIONS[sim.id]) {
+        DATA[sim.id] = schBuildFullSimulatorHTML({
+          id: sim.id,
+          nombre: sim.nombre,
+          area: sim.area,
+          desc: sim.desc,
+          times: sim.times || { basico: 90, intermedio: 60, experto: 30 },
+          questions: DEFAULT_EXAMS_QUESTIONS[sim.id]
+        });
+      } else {
+        DATA[sim.id] = schBuildFullSimulatorHTML({
+          id: sim.id,
+          nombre: sim.nombre,
+          area: sim.area,
+          desc: sim.desc,
+          times: sim.times || { basico: 90, intermedio: 60, experto: 30 },
+          questions: DEFAULT_EXAMS_QUESTIONS["mat1"]
+        });
+      }
+    });
+
+    renderGrid();
+    schLoadExamsFromCloud();
+  }
+
+  // IMPORTACIÓN INTELIGENTE DE ARCHIVOS HTML (SIN ERRORES EN LETRAS)
+  function schHandleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let content = e.target.result;
+      content = schFixTextEncoding(content);
+      const fileName = file.name.replace(/\.[^/.]+$/, "");
+      schParseAndImportHTML(content, fileName);
+      event.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function schProcessPastedHtml() {
+    const text = document.getElementById('schPasteHtmlText').value;
+    if (!text.trim()) {
+      alert("Por favor, pega el código HTML del balotario.");
+      return;
+    }
+    document.getElementById('schPasteHtmlModal').style.display = 'none';
+    schParseAndImportHTML(text, "Balotario Importado");
+    document.getElementById('schPasteHtmlText').value = '';
+  }
+
+  async function schParseAndImportHTML(htmlContent, defaultTitle) {
+    const statusEl = document.getElementById('schImportStatus');
+    if (statusEl) statusEl.textContent = '⏳ Procesando balotario HTML...';
+
+    try {
+      let cleanHtml = schFixTextEncoding(htmlContent);
+
+      if (!cleanHtml.includes('charset=') && !cleanHtml.includes('charset="UTF-8"')) {
+        cleanHtml = cleanHtml.replace(/<head>/i, '<head>\n<meta charset="UTF-8">');
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cleanHtml, 'text/html');
+
+      let title = doc.querySelector('.session-name')?.textContent?.trim() ||
+                  doc.querySelector('h1')?.textContent?.trim() ||
+                  doc.title?.trim() ||
+                  defaultTitle || "Balotario Importado";
+      title = schFixTextEncoding(title);
+
+      let area = "Importado";
+      const heroNote = doc.querySelector('.hero-note')?.textContent || '';
+      if (heroNote.includes('Área:')) {
+        const areaMatch = heroNote.match(/Área:\s*([^·\n]+)/);
+        if (areaMatch) area = schFixTextEncoding(areaMatch[1].trim());
+      }
+
+      let parsedQuestions = null;
+      const scriptMatches = cleanHtml.match(/(?:RAW_QUESTIONS|const questions|let questions)\s*=\s*(\[\s*\{[\s\S]*?\}\s*\]);/);
+      if (scriptMatches) {
+        try {
+          parsedQuestions = JSON.parse(scriptMatches[1]);
+        } catch (e) {}
+      }
+
+      let qCount = 0;
+      if (parsedQuestions && Array.isArray(parsedQuestions)) {
+        qCount = parsedQuestions.length;
+      } else {
+        qCount = doc.querySelectorAll('.question-card, .question-slide, article').length || 20;
+      }
+
+      const examId = "import_" + Date.now();
+      let finalSimulatorHtml = cleanHtml;
+
+      if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+        finalSimulatorHtml = schBuildFullSimulatorHTML({
+          id: examId,
+          nombre: title,
+          area: area,
+          desc: `Balotario oficial importado (${qCount} preguntas).`,
+          times: { basico: 90, intermedio: 60, experto: 30 },
+          questions: parsedQuestions
+        });
+      }
+
+      const newSim = {
+        id: examId,
+        area: area,
+        nombre: title,
+        desc: `Balotario oficial importado sin errores de letras (${qCount} preguntas).`,
+        preguntas: `${qCount} preguntas`,
+        color: "var(--c-trib)",
+        times: { basico: 90, intermedio: 60, experto: 30 },
+        questions: parsedQuestions || []
+      };
+
+      const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
+      customList.push(newSim);
+      localStorage.setItem('sch_custom_simuladores', JSON.stringify(customList));
+      localStorage.setItem('sch_custom_data_' + examId, finalSimulatorHtml);
+
+      SIMULADORES.push(newSim);
+      DATA[examId] = finalSimulatorHtml;
+
+      try {
+        await apiPost({ accion: "guardarBalotario", balotario: newSim });
+      } catch(e) {}
+
+      renderGrid();
+      schRenderBalotariosTable();
+
+      if (statusEl) statusEl.textContent = `✅ ¡Balotario "${title}" importado con éxito!`;
+      alert(`¡Balotario "${title}" importado con éxito!\nSe han procesado ${qCount} preguntas sin errores en letras ni caracteres.`);
+
+    } catch (err) {
+      console.error(err);
+      if (statusEl) statusEl.textContent = '❌ Error al procesar archivo HTML.';
+      alert("Ocurrió un error al procesar el archivo HTML: " + err.message);
+    }
+  }
+
+  // ELIMINACIÓN TOTAL Y SIN RESTRICCIONES DE CUALQUIER BALOTARIO
+  async function schDeleteBalotario(id) {
+    const sim = SIMULADORES.find(s => s.id === id);
+    if (!sim) return;
+
+    if (!confirm(`¿Estás seguro de eliminar el balotario "${sim.nombre}"?\nEsta acción eliminará el examen por completo del simulador y de la nube.`)) {
+      return;
+    }
+
+    const isDefault = DEFAULT_SIMULADORES.some(d => d.id === id);
+    if (isDefault) {
+      schAddDeletedDefault(id);
+    }
+
+    const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
+    const updatedCustom = customList.filter(s => s.id !== id);
+    localStorage.setItem('sch_custom_simuladores', JSON.stringify(updatedCustom));
+    localStorage.removeItem('sch_custom_data_' + id);
+
+    SIMULADORES = SIMULADORES.filter(s => s.id !== id);
+    delete DATA[id];
+
+    try {
+      await apiPost({ accion: "eliminarBalotario", id: id });
+    } catch(e) {}
+
+    renderGrid();
+    schRenderBalotariosTable();
+    alert(`El balotario "${sim.nombre}" ha sido eliminado exitosamente.`);
+  }
+
+  // SINCRONIZAR BALOTARIOS DESDE GOOGLE SHEETS
+  async function schLoadExamsFromCloud() {
+    const cargando = document.getElementById('cargando');
+    cargando.classList.add('active');
+
+    const res = await apiPost({ accion: "obtenerBalotarios" });
+    cargando.classList.remove('active');
+
+    if (res.status === "success" && Array.isArray(res.data)) {
+      const cloudExams = res.data;
+      const deletedDefaults = schGetDeletedDefaults();
+      const activeDefaults = DEFAULT_SIMULADORES.filter(d => !deletedDefaults.includes(d.id));
+
+      localStorage.setItem('sch_custom_simuladores', JSON.stringify(cloudExams));
+      SIMULADORES = [...activeDefaults, ...cloudExams];
+
+      cloudExams.forEach(sim => {
+        const fullHtml = schBuildFullSimulatorHTML(sim);
+        DATA[sim.id] = fullHtml;
+        localStorage.setItem('sch_custom_data_' + sim.id, fullHtml);
+      });
+
+      renderGrid();
+      schRenderBalotariosTable();
+    }
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = "";
+    SIMULADORES.forEach(sim => {
+      const card = document.createElement('article');
+      card.className = "card";
+      card.style.setProperty('--accent', sim.color || 'var(--c-mat)');
+      card.innerHTML = `
+        <div class="eyebrow">${sim.area}</div>
+        <h2>${sim.nombre}</h2>
+        <p>${sim.desc}</p>
+        <div class="meta">
+          <span class="pill">${sim.preguntas || 'Balotario oficial'}</span>
+        </div>
+        <button type="button" onclick="cargarSimulador('${sim.id}')">Iniciar Simulador</button>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function cargarSimulador(id) {
+    if (!currentUser) {
+      document.getElementById('schLoginModal').style.display = 'flex';
+      return;
+    }
+    const sim = SIMULADORES.find(s => s.id === id);
+    if (!sim) return;
+
+    const wrap = document.getElementById('visor-wrap');
+    const titulo = document.getElementById('visorTitulo');
+    const iframe = document.getElementById('visor');
+    const dot = document.getElementById('visorDot');
+
+    titulo.textContent = sim.nombre;
+    dot.style.background = sim.color || 'var(--sunat-yellow)';
+    wrap.classList.add('active');
+    document.getElementById('statusLine').style.display = 'flex';
+
+    const htmlContent = DATA[id] || schBuildFullSimulatorHTML(sim);
+    iframe.srcdoc = htmlContent;
+    wrap.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.getElementById('btnCerrar').onclick = () => {
+    document.getElementById('visor-wrap').classList.remove('active');
+    document.getElementById('statusLine').style.display = 'none';
+    document.getElementById('visor').srcdoc = "";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  document.getElementById('btnPantallaCompleta').onclick = () => {
+    const el = document.getElementById('visor-wrap');
+    if (!document.fullscreenElement) el.requestFullscreen().catch(() => {});
+    else document.exitFullscreen();
+  };
+  document.getElementById('btnNuevaPestana').onclick = () => {
+    const doc = document.getElementById('visor').srcdoc;
+    if (!doc) return;
+    const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  };
+
+  // AUTENTICACIÓN CONECTADA A GOOGLE SHEETS
+  async function schPerformAuth() {
+    const userInput = document.getElementById('schInpUser').value.trim();
+    const pin = document.getElementById('schInpPin').value.trim();
+    const err = document.getElementById('schAuthErr');
+    const btn = document.getElementById('schBtnLogin');
+    err.style.display = 'none';
+
+    if (!userInput || !pin) {
+      err.textContent = "Por favor, ingresa tu DNI / Usuario y tu PIN asignado.";
+      err.style.display = 'block';
+      return;
+    }
+
+    const pinAdmin = localStorage.getItem('sch_pin_admin') || '129923';
+
+    if (pin === pinAdmin) {
+      currentUser = { name: userInput || "Director General", role: 'admin', daysLeft: 999 };
+      document.getElementById('schLoginModal').style.display = 'none';
+      schRenderHeaderBar();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Validando credenciales en Sheets...";
+
+    const res = await apiPost({
+      accion: "login",
+      usuario: userInput,
+      pin: pin
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Ingresar al Aula";
+
+    if (res.status === "success" && res.data) {
+      const student = res.data;
+      if (student.bloqueado) {
+        err.textContent = "Tu cuenta está suspendida temporalmente en Google Sheets.";
+        err.style.display = 'block';
+        return;
+      }
+      if (student.diasRestantes <= 0) {
+        err.textContent = "Tu período de acceso ha vencido. Solicita una renovación al administrador.";
+        err.style.display = 'block';
+        return;
+      }
+
+      currentUser = {
+        name: student.nombre,
+        dni: student.dni,
+        role: 'student',
+        daysLeft: student.diasRestantes
+      };
+      document.getElementById('schLoginModal').style.display = 'none';
+      schRenderHeaderBar();
+    } else {
+      err.textContent = res.mensaje || "Credenciales no válidas. Verifica tu DNI y PIN individual.";
+      err.style.display = 'block';
+    }
+  }
+
+  function schRenderHeaderBar() {
+    const bar = document.getElementById('schHeaderBar');
+    bar.innerHTML = `
+      <div class="sch-user-tag">👤 ${currentUser.name} ${currentUser.role === 'admin' ? '(DIRECTOR)' : '(' + currentUser.daysLeft + ' días)'}</div>
+      <button class="sch-btn-pill pill-notes" type="button" onclick="schOpenStudentModal()">📋 Mis Notas</button>
+      ${currentUser.role === 'admin' ? '<button class="sch-btn-pill pill-admin" type="button" onclick="schOpenAdminModal()">⚙️ Panel Admin</button>' : ''}
+      <button class="sch-btn-pill pill-exit" type="button" onclick="schLogout()">🚪 Salir</button>
+    `;
+  }
+
+  function schLogout() {
+    currentUser = null;
+    document.getElementById('schHeaderBar').innerHTML = '';
+    document.getElementById('schInpUser').value = '';
+    document.getElementById('schInpPin').value = '';
+    document.getElementById('schLoginModal').style.display = 'flex';
+  }
+
+  function schOpenStudentModal() {
+    schRenderStudentNotes();
+    document.getElementById('schStudentModal').style.display = 'flex';
+  }
+
+  function schOpenAdminModal() {
+    schLoadStudentsFromCloud();
+    schRenderBalotariosTable();
+    schLoadScoresFromCloud();
+    document.getElementById('schAdminModal').style.display = 'flex';
+  }
+
+  function schSwitchTab(tabId, el) {
+    document.querySelectorAll('.sch-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sch-tab-content').forEach(c => c.style.display = 'none');
+    el.classList.add('active');
+    const content = document.getElementById(tabId);
+    if (content) content.style.display = 'block';
+  }
+
+  // ALUMNOS: CARGAR DESDE GOOGLE SHEETS
+  async function schLoadStudentsFromCloud() {
+    const tbody = document.getElementById('schCrmTbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:18px;">⏳ Conectando con Google Sheets...</td></tr>';
+    
+    const res = await apiPost({ accion: "obtenerAlumnos" });
+    if (res.status === "success" && Array.isArray(res.data)) {
+      cachedStudents = res.data;
+      localStorage.setItem('sch_students_crm', JSON.stringify(cachedStudents));
+      schRenderCrmRows(cachedStudents);
+    } else {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#a50034;">No se pudo sincronizar la lista de alumnos.</td></tr>';
+    }
+  }
+
+  function schFilterCrmLocal() {
+    const q = (document.getElementById('schFilterCrm')?.value || '').toLowerCase();
+    const filtered = cachedStudents.filter(s => 
+      s.nombre.toLowerCase().includes(q) || String(s.dni).toLowerCase().includes(q)
+    );
+    schRenderCrmRows(filtered);
+  }
+
+  function schRenderCrmRows(students) {
+    const tbody = document.getElementById('schCrmTbody');
+    tbody.innerHTML = '';
+
+    if (students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#5c6f86; padding:18px;">No hay alumnos registrados en la hoja de Google Sheets.</td></tr>';
+      return;
+    }
+
+    students.forEach((st) => {
+      let stClass = "st-activo", stText = "ACTIVO";
+      if (st.bloqueado) { stClass = "st-bloqueado"; stText = "BLOQUEADO"; }
+      else if (st.diasRestantes <= 0) { stClass = "st-vencido"; stText = "VENCIDO"; }
+      else if (st.diasRestantes <= 3) { stClass = "st-porvencer"; stText = "POR VENCER"; }
+
+      const credMsg = encodeURIComponent(`Hola ${st.nombre}, tus credenciales de la Escuela Virtual CAT SUNAT son:\n\n👤 DNI / Usuario: ${st.dni}\n🔑 Tu PIN: ${st.pin}\n⏳ Vigencia: ${st.diasRestantes} días\n\n¡Ingresa y continúa reforzando!`);
+      const wspLink = `https://wa.me/51${String(st.telefono).replace(/\\D/g, '')}?text=${credMsg}`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${st.nombre}</strong><br><small style="color:#7d94ad;">Reg: ${st.fechaRegistro || '—'}</small></td>
+        <td><code>${st.dni}</code></td>
+        <td><span style="font-family:monospace; background:#eef6ff; padding:3px 8px; border-radius:6px; font-weight:900; color:#005eb8;">${st.pin}</span></td>
+        <td>📱 ${st.telefono}</td>
+        <td><strong>${st.diasRestantes} d</strong></td>
+        <td><span class="badge-status ${stClass}">${stText}</span></td>
+        <td>
+          <a href="${wspLink}" target="_blank" class="btn-wsp" title="Enviar credenciales a su WhatsApp">📲 Enviar Credencial</a>
+        </td>
+        <td>
+          <button onclick="schCloudAdjustDays('${st.dni}', 30)" style="padding:4px 7px; font-size:.74rem; border-radius:6px; cursor:pointer;" title="Sumar 30 días">+30d</button>
+          <button onclick="schCloudToggleBlock('${st.dni}')" style="padding:4px 7px; font-size:.74rem; border-radius:6px; cursor:pointer; background:#fff0f3; color:#a50034; border:1px solid #f3c1cd;">${st.bloqueado ? 'Activar' : 'Bloq'}</button>
+          <button onclick="schCloudDeleteStudent('${st.dni}')" style="padding:4px 7px; font-size:.74rem; border-radius:6px; cursor:pointer; color:#888;" title="Eliminar de Sheets">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // MATRICULAR ALUMNO EN GOOGLE SHEETS
+  async function schEnrollStudentManual() {
+    const name = document.getElementById('mAddName').value.trim();
+    const dni = document.getElementById('mAddDni').value.trim();
+    const pin = document.getElementById('mAddPin').value.trim();
+    const phone = document.getElementById('mAddPhone').value.trim();
+    const days = parseInt(document.getElementById('mAddDays').value, 10) || 30;
+    const btn = document.getElementById('btnSaveStudent');
+
+    if (!name || !dni || !pin) {
+      alert("Por favor, ingresa al menos Nombre, DNI/Usuario y PIN.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Guardando en Sheets...";
+
+    const res = await apiPost({
+      accion: "guardarAlumno",
+      alumno: {
+        nombre: name,
+        dni: dni,
+        pin: pin,
+        telefono: phone || "No registrado",
+        diasRestantes: days,
+        bloqueado: false,
+        fechaRegistro: new Date().toLocaleDateString('es-PE')
+      }
+    });
+
+    btn.disabled = false;
+    btn.textContent = "💾 Guardar en Google Sheets";
+
+    if (res.status === "success") {
+      alert(`¡Alumno ${name} registrado con éxito en Google Sheets!`);
+      document.getElementById('mAddName').value = '';
+      document.getElementById('mAddDni').value = '';
+      document.getElementById('mAddPin').value = '';
+      document.getElementById('mAddPhone').value = '';
+      schLoadStudentsFromCloud();
+    } else {
+      alert("Error al guardar: " + res.mensaje);
+    }
+  }
+
+  async function schCloudAdjustDays(dni, addDays) {
+    const st = cachedStudents.find(s => String(s.dni) === String(dni));
+    if (!st) return;
+    st.diasRestantes = Number(st.diasRestantes) + addDays;
+    st.bloqueado = false;
+    await apiPost({ accion: "guardarAlumno", alumno: st });
+    schLoadStudentsFromCloud();
+  }
+
+  async function schCloudToggleBlock(dni) {
+    const st = cachedStudents.find(s => String(s.dni) === String(dni));
+    if (!st) return;
+    st.bloqueado = !st.bloqueado;
+    await apiPost({ accion: "guardarAlumno", alumno: st });
+    schLoadStudentsFromCloud();
+  }
+
+  async function schCloudDeleteStudent(dni) {
+    if (!confirm(`¿Eliminar al alumno con DNI ${dni} de Google Sheets?`)) return;
+    await apiPost({ accion: "eliminarAlumno", dni: dni });
+    schLoadStudentsFromCloud();
+  }
+
+  // BALOTARIOS: TABLA Y OPCIÓN DE ELIMINAR CUALQUIERA
+  function schRenderBalotariosTable() {
+    const tbody = document.getElementById('schBalotariosTbody');
+    tbody.innerHTML = '';
+    SIMULADORES.forEach((sim) => {
+      const isCustom = !DEFAULT_SIMULADORES.some(d => d.id === sim.id);
+      const times = sim.times || { basico: 90, intermedio: 60, experto: 30 };
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${sim.nombre}</strong></td>
+        <td>${sim.area}</td>
+        <td>${sim.preguntas || 'Oficial'}</td>
+        <td><strong>${times.basico}m / ${times.intermedio}m / ${times.experto}m</strong></td>
+        <td><span class="badge-status ${isCustom ? 'st-activo' : 'st-porvencer'}">${isCustom ? '☁️ Cloud / Import' : 'Oficial Local'}</span></td>
+        <td>
+          <button onclick="document.getElementById('schAdminModal').style.display='none'; cargarSimulador('${sim.id}');" style="padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:800; font-size:.78rem; background:#005eb8; color:white; border:none;">👁️ Probar</button>
+          <button onclick="schDeleteBalotario('${sim.id}')" style="padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:800; font-size:.78rem; background:#fff0f3; color:#a50034; border:1px solid #f3c1cd; margin-left:4px;" title="Eliminar este balotario sin restricciones">🗑️ Eliminar</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // NOTAS: GUARDAR Y LEER DESDE GOOGLE SHEETS
+  async function schLoadScoresFromCloud() {
+    const tbody = document.getElementById('schScoresAdminTbody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:18px;">⏳ Cargando notas desde Google Sheets...</td></tr>';
+
+    const res = await apiPost({ accion: "obtenerNotas" });
+    if (res.status === "success" && Array.isArray(res.data)) {
+      cachedScores = res.data;
+      schRenderScoresRows(cachedScores);
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#a50034;">No se pudieron cargar las notas.</td></tr>';
+    }
+  }
+
+  function schRenderStudentNotes() {
+    const tbody = document.getElementById('schStudentNotesTbody');
+    const alertBox = document.getElementById('schStudentAlertBox');
+    tbody.innerHTML = '';
+    alertBox.innerHTML = '';
+
+    if (!currentUser) return;
+
+    const myScores = cachedScores.filter(s => String(s.dni) === String(currentUser.dni) || s.alumno.toLowerCase() === currentUser.name.toLowerCase());
+
+    if (myScores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#5c6f86; padding:18px;">Aún no has rendido ninguna evaluación.</td></tr>';
+      return;
+    }
+
+    myScores.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.fecha}</td>
+        <td><strong>${s.simulador}</strong></td>
+        <td>${s.aciertos}</td>
+        <td><strong style="color:#005eb8;">${s.nota} / 20</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function schFilterScoresLocal() {
+    const q = (document.getElementById('schFilterScoresInp')?.value || '').toLowerCase();
+    const filtered = cachedScores.filter(s => 
+      s.alumno.toLowerCase().includes(q) || s.simulador.toLowerCase().includes(q) || String(s.dni).includes(q)
+    );
+    schRenderScoresRows(filtered);
+  }
+
+  function schRenderScoresRows(scores) {
+    const tbody = document.getElementById('schScoresAdminTbody');
+    tbody.innerHTML = '';
+    if (scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#5c6f86; padding:18px;">Aún no se han registrado notas en la hoja.</td></tr>';
+      return;
+    }
+    scores.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${s.alumno}</strong></td>
+        <td><code>${s.dni || '—'}</code></td>
+        <td>${s.simulador}</td>
+        <td>${s.fecha}</td>
+        <td>${s.aciertos}</td>
+        <td><strong>${s.nota}</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // CREADOR MANUAL: PUBLICAR BALOTARIO EN GOOGLE SHEETS
+  let builderCount = 0;
+
+  function schAddQuestionForm() {
+    builderCount++;
+    const wrap = document.getElementById('builderQuestionsWrap');
+    const div = document.createElement('div');
+    div.className = "q-builder-card";
+    div.id = "builderQCard_" + builderCount;
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span style="font-weight:900; color:#005eb8; font-size:.95rem;">Pregunta #${builderCount}</span>
+        <button type="button" onclick="document.getElementById('builderQCard_${builderCount}').remove()" style="background:none; border:none; color:#a50034; font-weight:800; cursor:pointer; font-size:.84rem;">❌ Eliminar</button>
+      </div>
+
+      <div class="sch-field">
+        <label>Tema o Sección:</label>
+        <input type="text" class="sch-input b-section" placeholder="Ej. Código Tributario / Rotación Mental">
+      </div>
+
+      <div class="sch-field">
+        <label>Texto de la Pregunta:</label>
+        <textarea class="sch-input b-text" rows="2" placeholder="Escribe el enunciado..."></textarea>
+      </div>
+
+      <div class="sch-field">
+        <label>Imagen (Enlace / URL de la imagen):</label>
+        <input type="text" class="sch-input b-img-url" placeholder="https://... imagen.jpg">
+      </div>
+
+      <div style="background:#f8fbff; border:1px solid #cfe0f2; border-radius:12px; padding:12px; margin-bottom:10px;">
+        <label style="display:block; font-size:.8rem; font-weight:800; color:#003b71; margin-bottom:8px;">Alternativas y Respuesta Correcta:</label>
+        <div style="display:grid; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="b_correct_${builderCount}" value="A" checked>
+            <span style="font-weight:900; color:#005eb8; min-width:20px;">A)</span>
+            <input type="text" class="sch-input b-opt-A" placeholder="Opción A">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="b_correct_${builderCount}" value="B">
+            <span style="font-weight:900; color:#005eb8; min-width:20px;">B)</span>
+            <input type="text" class="sch-input b-opt-B" placeholder="Opción B">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="b_correct_${builderCount}" value="C">
+            <span style="font-weight:900; color:#005eb8; min-width:20px;">C)</span>
+            <input type="text" class="sch-input b-opt-C" placeholder="Opción C">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="b_correct_${builderCount}" value="D">
+            <span style="font-weight:900; color:#005eb8; min-width:20px;">D)</span>
+            <input type="text" class="sch-input b-opt-D" placeholder="Opción D">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="b_correct_${builderCount}" value="E">
+            <span style="font-weight:900; color:#005eb8; min-width:20px;">E)</span>
+            <input type="text" class="sch-input b-opt-E" placeholder="Opción E">
+          </div>
+        </div>
+      </div>
+
+      <div class="sch-field" style="margin-bottom:0;">
+        <label>Sustento / Fundamento de la Respuesta Correcta:</label>
+        <textarea class="sch-input b-sustento" rows="2" placeholder="Explica la norma, cálculo o razón..."></textarea>
+      </div>
+    `;
+    wrap.appendChild(div);
+  }
+
+  async function schSaveCustomManualExam() {
+    const title = document.getElementById('newExamTitle').value.trim();
+    const area = document.getElementById('newExamArea').value;
+    const desc = document.getElementById('newExamDesc').value.trim() || "Simulador interactivo oficial.";
+    const btn = document.getElementById('btnPublishExam');
+    
+    const tBasico = parseInt(document.getElementById('newExamTimeBasico').value, 10) || 90;
+    const tIntermedio = parseInt(document.getElementById('newExamTimeIntermedio').value, 10) || 60;
+    const tExperto = parseInt(document.getElementById('newExamTimeExperto').value, 10) || 30;
+
+    const cardNodes = document.querySelectorAll('#builderQuestionsWrap .q-builder-card');
+
+    if (!title) {
+      alert("Ingresa el nombre del examen.");
+      document.getElementById('newExamTitle').focus();
+      return;
+    }
+    if (cardNodes.length === 0) {
+      alert("Agrega al menos una pregunta.");
+      schAddQuestionForm();
+      return;
+    }
+
+    const questions = [];
+    let hasError = false;
+
+    cardNodes.forEach((card, idx) => {
+      const section = card.querySelector('.b-section').value.trim() || area;
+      const text = card.querySelector('.b-text').value.trim();
+      const image = card.querySelector('.b-img-url').value.trim();
+      const optA = card.querySelector('.b-opt-A').value.trim();
+      const optB = card.querySelector('.b-opt-B').value.trim();
+      const optC = card.querySelector('.b-opt-C').value.trim();
+      const optD = card.querySelector('.b-opt-D').value.trim();
+      const optE = card.querySelector('.b-opt-E').value.trim();
+      const sustento = card.querySelector('.b-sustento').value.trim();
+      
+      const correctRadio = card.querySelector('input[type="radio"]:checked');
+      const correct = correctRadio ? correctRadio.value : "A";
+
+      if (!text || !optA || !optB) {
+        alert(`La pregunta #${idx + 1} debe tener enunciado y al menos las opciones A y B.`);
+        hasError = true;
+        return;
+      }
+
+      questions.push({
+        section,
+        text,
+        image,
+        options: { A: optA, B: optB, C: optC, D: optD, E: optE },
+        correct,
+        sustento
+      });
+    });
+
+    if (hasError) return;
+
+    btn.disabled = true;
+    btn.textContent = "Subiendo a Google Sheets...";
+
+    const examId = "exam_" + Date.now();
+    let areaColor = "var(--c-trib)";
+    if (area === "Matemático") areaColor = "var(--c-mat)";
+    else if (area === "Verbal") areaColor = "var(--c-verb)";
+    else if (area === "Espacial") areaColor = "var(--c-esp)";
+
+    const balotarioData = {
+      id: examId,
+      nombre: title,
+      area: area,
+      desc: desc,
+      color: areaColor,
+      times: { basico: tBasico, intermedio: tIntermedio, experto: tExperto },
+      questions: questions
+    };
+
+    const res = await apiPost({
+      accion: "guardarBalotario",
+      balotario: balotarioData
+    });
+
+    btn.disabled = false;
+    btn.textContent = "💾 Publicar Balotario en Google Sheets";
+
+    if (res.status === "success") {
+      alert(`¡Balotario "${title}" guardado en la nube de Google Sheets con éxito!`);
+      document.getElementById('newExamTitle').value = '';
+      document.getElementById('newExamDesc').value = '';
+      document.getElementById('builderQuestionsWrap').innerHTML = '';
+      builderCount = 0;
+      schLoadExamsFromCloud();
+      const tabBalotariosBtn = document.querySelectorAll('.sch-tab')[1];
+      if (tabBalotariosBtn) schSwitchTab('tab-balotarios', tabBalotariosBtn);
+    } else {
+      alert("Error al publicar en Sheets: " + res.mensaje);
+    }
+  }
+
+  function schSavePins() {
+    const a = document.getElementById('cfgPinAdmin').value.trim();
+    if (a) localStorage.setItem('sch_pin_admin', a);
+    alert("PIN Maestro guardado localmente.");
+  }
+
+  // RECEPCIÓN DE NOTAS Y GUARDADO DIRECTO EN SHEETS
+  window.addEventListener('message', async (e) => {
+    if (e.data && e.data.type === 'EXAM_SCORE') {
+      const scoreData = e.data;
+      if (currentUser) {
+        await apiPost({
+          accion: "guardarNota",
+          notaObj: {
+            alumno: currentUser.name,
+            dni: currentUser.dni || "—",
+            simulador: scoreData.examTitle,
+            fecha: scoreData.date,
+            aciertos: `${scoreData.correct} / ${scoreData.total}`,
+            nota: scoreData.score20
+          }
+        });
+      }
+    }
+  });
+
+  // INICIALIZACIÓN
+  window.addEventListener('DOMContentLoaded', () => {
+    schInitStorage();
+  });
+</script>
+</body>
+</html>
